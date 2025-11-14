@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#2196F3" />
+    <title>Flight Log Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- Leaflet MarkerCluster CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Leaflet MarkerCluster JS -->
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    
+    <!-- jsPDF -->
+    <script src="https://unpkg.com/jspdf@latest/dist/jspdf.umd.min.js"></script>
+    <!-- jsPDF autoTable plugin -->
+    <script src="https://unpkg.com/jspdf-autotable@latest/dist/jspdf.plugin.autotable.js"></script>
+
+    <style>
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #F8FAFC; /* slate-50 */
+        transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .dark body {
+        background-color: #020617; /* slate-950 */
+      }
+      /* Style for the auth page background */
+      body.auth-bg {
+        background-color: #0B3D2E;
+        background-image: radial-gradient(ellipse at center, hsl(166, 68%, 23%, 1) 0%, #0B3D2E 70%);
+      }
+      .dark body.auth-bg {
+          background-color: #020617;
+          background-image: radial-gradient(ellipse at center, hsl(220, 48%, 15%, 1) 0%, #020617 70%);
+      }
+
+      .leaflet-popup-content-wrapper {
+        border-radius: 12px;
+        box-shadow: 0 4px_12px rgba(0,0,0,0.1);
+        background-color: #fff;
+      }
+      .dark .leaflet-popup-content-wrapper {
+          background-color: #1e293b; /* slate-800 */
+          border: 1px solid #334155; /* slate-700 */
+      }
+
+      .leaflet-popup-content {
+        font-family: 'Inter', sans-serif;
+        margin: 12px !important;
+      }
+      .flight-popup-content h3 {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 0.75rem;
+      }
+      .dark .flight-popup-content h3 { color: #f1f5f9; }
+      .flight-popup-content div {
+        font-size: 0.875rem;
+        color: #475569;
+        line-height: 1.5;
+      }
+      .dark .flight-popup-content div { color: #94a3b8; }
+      .flight-popup-content p { margin: 2px 0; }
+      .flight-popup-content strong { font-weight: 600; color: #334155; }
+      .dark .flight-popup-content strong { color: #cbd5e1; }
+      .flight-popup-content .popup-image {
+        width: 100%;
+        height: 96px;
+        object-fit: cover;
+        border-radius: 8px;
+        margin-bottom: 12px;
+      }
+      
+      .marker-cluster-custom {
+        background: transparent;
+        border: none;
+      }
+      .cluster-icon {
+        background: rgba(20, 184, 166, 0.85); /* teal-500 with opacity */
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        border: 2px solid rgba(255, 255, 255, 0.8);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .marker-cluster-custom:hover .cluster-icon {
+          transform: scale(1.1);
+          background: rgba(13, 148, 136, 0.9);
+      }
+      
+      /* New Custom Marker Styles */
+      .custom-map-marker {
+        position: relative;
+        border: none;
+        background: transparent;
+      }
+      .custom-map-marker .pin-body {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 32px;
+        height: 32px;
+        background-color: #14B8A6; /* teal-500 */
+        border-radius: 50%;
+        border: 2px solid white;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1;
+      }
+      .custom-map-marker .pin-body svg {
+        width: 16px;
+        height: 16px;
+        color: white;
+        stroke-width: 2.5;
+      }
+      .custom-map-marker .pin-pointer {
+        position: absolute;
+        bottom: 0px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 8px solid transparent;
+        border-right: 8px solid transparent;
+        border-top: 12px solid #14B8A6; /* teal-500 */
+      }
+
+      .custom-map-marker .pulse {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 32px;
+        height: 32px;
+        background-color: rgba(20, 184, 166, 0.5);
+        border-radius: 50%;
+        animation: pulse-animation 2s ease-out infinite;
+        z-index: 0;
+        transform-origin: center;
+      }
+
+      @keyframes pulse-animation {
+        0% {
+          transform: scale(0.8);
+          opacity: 0.7;
+        }
+        70% {
+          transform: scale(2.5);
+          opacity: 0;
+        }
+        100% {
+          transform: scale(2.5);
+          opacity: 0;
+        }
+      }
+
+      /* Silky smooth animations */
+      .animate-slide-in-up {
+        animation: slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        opacity: 0;
+      }
+
+      @keyframes slideInUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Staggered animation delays */
+      .delay-100 { animation-delay: 100ms; }
+      .delay-200 { animation-delay: 200ms; }
+      .delay-300 { animation-delay: 300ms; }
+      .delay-400 { animation-delay: 400ms; }
+      .delay-500 { animation-delay: 500ms; }
+
+      /* Side Menu Styles */
+      .side-menu-backdrop {
+        transition: background-color 0.4s ease-in-out;
+      }
+      .side-menu-panel {
+        transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .side-menu-panel .animate-menu-item {
+        animation: menu-item-fade-in 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        opacity: 0;
+      }
+
+      @keyframes menu-item-fade-in {
+        from {
+          opacity: 0;
+          transform: translateX(15px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>
